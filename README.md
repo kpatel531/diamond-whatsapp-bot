@@ -11,10 +11,6 @@ This repository contains the code and documentation for the Solitaire Lab Diamon
   - [Installation](#installation)
   - [Configuration](#configuration)
 - [Usage](#usage)
-- [Development](#development)
-  - [File Structure](#file-structure)
-  - [Adding New Features](#adding-new-features)
-- [Contributing](#contributing)
 - [License](#license)
 
 ## Overview
@@ -35,7 +31,7 @@ The Solitaire Lab Diamond WhatsApp Chatbot is a Node.js application that interac
 
 Before you start, ensure you have the following installed:
 
-- Node.js (v14.x or later)
+- Node.js (v16.x or later)
 - npm (v6.x or later)
 - A Meta developer account with access to the WhatsApp Business API
 - A valid SSL certificate for secure API communication
@@ -47,12 +43,9 @@ Before you start, ensure you have the following installed:
    ```bash
    git clone https://github.com/yourusername/solitaire-lab-diamond-chatbot.git
    cd solitaire-lab-diamond-chatbot
-
 2. **Install Dependencies:**
     ```bash
    npm install
-
-
 ### Configuration
 1. **Create a .env file** in the root directory with the following content:
     ```bash
@@ -60,5 +53,14 @@ Before you start, ensure you have the following installed:
     WHATSAPP_PHONE_NUMBER_ID=your-whatsapp-phone-number-id
     WHATSAPP_ACCESS_TOKEN=your-whatsapp-access-token
     BACKEND_API_URL=https://api.solitairelabdiamond.com
-
 2. **Set Up Webhooks:** Configure the webhook URL in your Meta developer portal to point to your server (e.g., https://yourdomain.com/webhook).
+
+### Usage
+To start the server, run:
+
+    npm start
+
+The chatbot will be live and ready to handle inquiries.
+
+### License
+This project is licensed under the ASC License - see the LICENSE file for details.
