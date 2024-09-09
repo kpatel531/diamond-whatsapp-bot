@@ -1,73 +1,47 @@
-const { Client, LocalAuth, Poll } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
+require('dotenv').config();
+const express = require('express');
+const axios = require('axios');
+const bodyParser = require('body-parser');
 
-// const restrictedNumber = "12019369649@c.us";
-const restrictedNumber = "919537622610@c.us";
-const currentState = [];
+const app = express();
+app.use(bodyParser.json())
 
-const client = new Client({
-    authStrategy: new LocalAuth()
+const port = process.env.PORT;
+const phoneNumberId = process.env.RECIPIENT_WAID;
+const version = process.env.VERSION;
+const token = process.env.ACCESS_TOKEN;
+
+app.listen(port, () => {
+    console.log("Sltrld whatsapp bot listening for port no:.", port);
 });
 
-client.on('qr', qr => {
-    console.log('QR RECEIVED', qr);
-    qrcode.generate(qr, {small: true});
+// Webhook to receive messages
+app.post('/webhook', async (req, res) => {
+    const data = req.body;
+
+    if (data.object) {
+        if (data.entry && data.entry[0].changes && data.entry[0].changes[0].value.messages) {
+            const message = data.entry[0].changes[0].value.messages[0];
+            const from = message.from;
+            const msgBody = message.text.body;
+
+            await sendMessage(from, `You sent: ${msgBody}`);
+        }
+        res.sendStatus(200);
+    } else {
+        res.sendStatus(404);
+    }
 });
 
-client.on('ready', () => {
-    console.log('Client is ready!');
-    client.getChats().then(chats => {
-        const chat = chats.find(chat => (chat.id._serialized) == restrictedNumber);
-        // const lastMessage = chat.messages[chat.messages.length - 1];
-        // console.log(chat);
+// Function to send messages via WhatsApp API
+async function sendMessage(to, text) {
+    const url = `https://graph.facebook.com/${version}/${phoneNumberId}/messages`;
+    const data = {
+        messaging_product: 'whatsapp',
+        to: to,
+        text: { body: text }
+    };
+    await axios.post(url, data, {
+        headers: { 'Authorization': `Bearer ${token}` }
     });
-});
-
-const setCurrentState = (chatId, state) => {
-    currentState[chatId] = state;
 }
-
-const getCurrentState = (chatId) => {
-    return currentState[chatId] || false;
-}
-
-const welcomeMsg = () => {
-    return 'Hello Boss! I am Diamond Searching Bot Working for "Solitaire Lab"\n' +
-    '\n'+
-    'Welcome to Diamond Finder! 💎✨ Search for your dream diamond with us.';
-}
-
-const welcomePoll = () => {
-    const question = 'What are you looking for?';
-    const options = [
-        'Do you want to filter diamonds?',
-        'Do you want to talk with experts?'
-    ];
-    return new Poll(question, options, false);
-}
-
-client.on('message', async (message) => {
-
-    if(message.from != restrictedNumber) {
-        return;
-    }
-
-    console.log(message);
-
-    switch(getCurrentState(message.from)) {
-        case 'welcome':
-            console.log('Welcome TODO for chnages');
-        break;
-        default:
-            await client.sendMessage(message.from, welcomeMsg());
-            await client.sendMessage(message.from, welcomePoll());
-            setCurrentState(message.from, 'welcome');
-        break;
-    }
-});
-
-client.on('vote_update', async (vote) => {
-    console.log(vote);
-});
-
-client.initialize();
