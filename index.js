@@ -40,7 +40,6 @@ app.listen(port, () => {
     console.log(`Sltrld whatsapp bot running on:. http://localhost:${port}`);
 });
 
-// Verify webhook token
 app.get('/webhook', (req, res) => {
     const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
@@ -80,7 +79,6 @@ sendMessage = async (sender, message) => {
     if(!getCurrentState(sender)) {
         setCurrentState(sender, 'inital');
     }
-    console.log(message);
 
     switch(getCurrentState(sender)) {
         case 'services':
@@ -89,7 +87,7 @@ sendMessage = async (sender, message) => {
                     if (message.interactive.button_reply.id == 'customer-service') {
                         await consultMessage(sender);
                     } else {
-                        setFilterData(sender, {"service": message.interactive.button_reply.id});
+                        setFilterData(sender, {"service": message.interactive.button_reply.title.toUpperCase()});
                         await shapeRequest(sender);
                     }
                 } else {
@@ -102,7 +100,7 @@ sendMessage = async (sender, message) => {
         case 'shapes':
             if (message.type == 'interactive') {
                 if(message.interactive.type == 'list_reply') {
-                    setFilterData(sender, {"shape": message.interactive.list_reply.id});
+                    setFilterData(sender, {"shape": message.interactive.list_reply.title.toUpperCase()});
                     await caratRequest(sender);
                 } else {
                     await errorMsg(sender);
@@ -113,8 +111,8 @@ sendMessage = async (sender, message) => {
         break;
         case 'carats':
             if (message.type == 'interactive') {
-                if(message.interactive.type == 'button_reply') {
-                    let carats = message.interactive.button_reply.id.split("_");
+                if(message.interactive.type == 'list_reply') {
+                    let carats = message.interactive.list_reply.id.split("_");
                     setFilterData(sender, {"carat": {"from": carats[0], "to": carats[1]}});
                     await colorRequest(sender);
                 } else {
@@ -127,7 +125,7 @@ sendMessage = async (sender, message) => {
         case 'colors':
             if (message.type == 'interactive') {
                 if(message.interactive.type == 'list_reply') {
-                    setFilterData(sender, {"color": message.interactive.list_reply.id});
+                    setFilterData(sender, {"color": message.interactive.list_reply.title.toUpperCase()});
                     await clarityRequest(sender);
                 } else {
                     await errorMsg(sender);
@@ -139,7 +137,7 @@ sendMessage = async (sender, message) => {
         case 'clarity':
             if (message.type == 'interactive') {
                 if(message.interactive.type == 'list_reply') {
-                    setFilterData(sender, {"clarity": message.interactive.list_reply.id});
+                    setFilterData(sender, {"clarity": message.interactive.list_reply.title.toUpperCase()});
                     await certificateRequest(sender);
                 } else {
                     await errorMsg(sender);
@@ -151,7 +149,7 @@ sendMessage = async (sender, message) => {
         case 'certificate':
             if (message.type == 'interactive') {
                 if(message.interactive.type == 'button_reply') {
-                    setFilterData(sender, {"certificate": message.interactive.button_reply.id});
+                    setFilterData(sender, {"certificate": message.interactive.button_reply.title});
                     await filterData(sender);
                 } else {
                     await errorMsg(sender);
@@ -206,18 +204,43 @@ const certificateRequest = async (sender) => {
 }
 
 const filterData = async (sender) => {
-    const filter = {
-        messaging_product: 'whatsapp',
-        to: sender,
-        type: 'text',
-        text: {
-            body: 'Filter working in progress'
-        }
-    };
-
-    await send(filter);
+    let allDiamondList = require('./test_data.json');
+    let filterlist = getFilterData(sender);
+    allDiamondList = allDiamondList.data;
+    const filteredDiamonds = allDiamondList.filter(diamond => 
+        (diamond["Growth Type"] === filterlist[0].service) 
+        && (diamond["Shape"] === filterlist[1].shape) 
+        && (diamond["Weight"] >= filterlist[2].carat.from) 
+        && (diamond["Weight"] <= filterlist[2].carat.to) 
+        && (diamond["Color"] === filterlist[3].color) 
+        && (diamond["Clarity"] === filterlist[4].clarity) 
+        && (diamond["Lab"] === filterlist[5].certificate)
+    );      
+    
+    if(filteredDiamonds.length) {
+        const filter = {
+            messaging_product: 'whatsapp',
+            to: sender,
+            type: 'text',
+            text: {
+                body: "Data is processing please wait"
+            }
+        };
+    
+        await send(filter);
+    } else {
+        const nofilter = {
+            messaging_product: 'whatsapp',
+            to: sender,
+            type: 'text',
+            text: {
+                body: "Apologies, but the diamond shape you requested is not available at the moment. Could you please provide more details or clarify the specific shape you're looking for? This will help us better assist you in finding the right diamond that meets your preferences."
+            }
+        };
+    
+        await send(nofilter);
+    }
     setCurrentState(sender, 'inital');
-    console.log(getFilterData(sender));
     chatFilterData[sender] = [];
 }
 
@@ -281,7 +304,7 @@ const caratRequest = async (sender) => {
         to: sender,
         type: 'interactive',
         interactive: {
-            type: 'button',
+            type: 'list',
             header: {
                 type: 'text',
                 text: '💎 Select a Carat Range'
@@ -290,20 +313,28 @@ const caratRequest = async (sender) => {
                 text: 'Please select one of the following carat ranges:'
             },
             action: {
-                buttons: [
+                button: 'Choose Range',
+                sections: [
                     {
-                        type: 'reply',
-                        reply: {
-                            id: '0_1',
-                            title: '0 - 1'
-                        }
-                    },
-                    {
-                        type: 'reply',
-                        reply: {
-                            id: '1_1.09',
-                            title: '1 - 1.09'
-                        }
+                        title: 'Carat',
+                        rows: [
+                            {
+                                id: '0_0.50',
+                                title: '0 - 0.50'
+                            },
+                            {
+                                id: '0.51_0.99',
+                                title: '0.51 - 0.99'
+                            },
+                            {
+                                id: '1_1.50',
+                                title: '1 - 1.50'
+                            },
+                            {
+                                id: '1.51_1.99',
+                                title: '1.51 - 1.99'
+                            }
+                        ]
                     }
                 ]
             }
@@ -511,14 +542,14 @@ const welcomeMsg = async (sender) => {
                         type: 'reply',
                         reply: {
                             id: 'cvd',
-                            title: 'CVD Diamond'
+                            title: 'CVD'
                         }
                     },
                     {
                         type: 'reply',
                         reply: {
                             id: 'hpht',
-                            title: 'HPHT Diamond'
+                            title: 'HPHT'
                         }
                     },
                     {
