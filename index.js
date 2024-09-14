@@ -11,6 +11,8 @@ const phoneNumberId = process.env.RECIPIENT_WAID;
 const version = process.env.VERSION;
 const token = process.env.ACCESS_TOKEN;
 const url = `https://graph.facebook.com/${version}/${phoneNumberId}/messages`;
+const expertsNumber = process.env.CONSULT_NUMBER;
+const consultToken = process.env.CONSULT_ACCESS_TOKEN;
 
 const currentState = [];
 const chatFilterData = [];
@@ -24,7 +26,10 @@ const getCurrentState = (chatId) => {
 }
 
 const setFilterData = (chatId, data) => {
-    chatFilterData[chatId] = data;
+    if (!chatFilterData[chatId]) {
+        chatFilterData[chatId] = [];
+    }
+    chatFilterData[chatId].push(data);
 }
 
 const getFilterData = (chatId) => {
@@ -72,29 +77,405 @@ app.post('/webhook', async (req, res) => {
 
 // Function to send messages via WhatsApp API
 sendMessage = async (sender, message) => {
-    console.log(sender);
-    console.log(message);
-
     if(!getCurrentState(sender)) {
         setCurrentState(sender, 'inital');
     }
-
-    console.log(getCurrentState(sender));
+    console.log(message);
 
     switch(getCurrentState(sender)) {
-        case 'welcome':
-            console.log("welcome");
+        case 'services':
+            if (message.type == 'interactive') {
+                if(message.interactive.type == 'button_reply') {
+                    if (message.interactive.button_reply.id == 'customer-service') {
+                        await consultMessage(sender);
+                    } else {
+                        setFilterData(sender, {"service": message.interactive.button_reply.id});
+                        await shapeRequest(sender);
+                    }
+                } else {
+                    await errorMsg(sender);
+                }
+            } else {
+                await errorMsg(sender);
+            }
         break;
-        case 'formfill':
-            console.log("formfill");
+        case 'shapes':
+            if (message.type == 'interactive') {
+                if(message.interactive.type == 'list_reply') {
+                    setFilterData(sender, {"shape": message.interactive.list_reply.id});
+                    await caratRequest(sender);
+                } else {
+                    await errorMsg(sender);
+                }
+            } else {
+                await errorMsg(sender);
+            }
         break;
-        case 'errormsg':
-            console.log('errormsg is happen.....!');
+        case 'carats':
+            if (message.type == 'interactive') {
+                if(message.interactive.type == 'button_reply') {
+                    let carats = message.interactive.button_reply.id.split("_");
+                    setFilterData(sender, {"carat": {"from": carats[0], "to": carats[1]}});
+                    await colorRequest(sender);
+                } else {
+                    await errorMsg(sender);
+                }
+            } else {
+                await errorMsg(sender);
+            }
+        break;
+        case 'colors':
+            if (message.type == 'interactive') {
+                if(message.interactive.type == 'list_reply') {
+                    setFilterData(sender, {"color": message.interactive.list_reply.id});
+                    await clarityRequest(sender);
+                } else {
+                    await errorMsg(sender);
+                }
+            } else {
+                await errorMsg(sender);
+            }
+        break;
+        case 'clarity':
+            if (message.type == 'interactive') {
+                if(message.interactive.type == 'list_reply') {
+                    setFilterData(sender, {"clarity": message.interactive.list_reply.id});
+                    await certificateRequest(sender);
+                } else {
+                    await errorMsg(sender);
+                }
+            } else {
+                await errorMsg(sender);
+            }
+        break;
+        case 'certificate':
+            if (message.type == 'interactive') {
+                if(message.interactive.type == 'button_reply') {
+                    setFilterData(sender, {"certificate": message.interactive.button_reply.id});
+                    await filterData(sender);
+                } else {
+                    await errorMsg(sender);
+                }
+            } else {
+                await errorMsg(sender);
+            }
         break;
         default:
             await welcomeMsg(sender);
         break;
     }
+}
+
+const certificateRequest = async (sender) => {
+    const certificate = {
+        messaging_product: 'whatsapp',
+        to: sender,
+        type: 'interactive',
+        interactive: {
+            type: 'button',
+            header: {
+                type: 'text',
+                text: '💎 Certificate'
+            },
+            body: {
+                text: 'Please select one of the following certificate:'
+            },
+            action: {
+                buttons: [
+                    {
+                        type: 'reply',
+                        reply: {
+                            id: 'gia',
+                            title: 'GIA'
+                        }
+                    },
+                    {
+                        type: 'reply',
+                        reply: {
+                            id: 'igi',
+                            title: 'IGI'
+                        }
+                    }
+                ]
+            }
+        }
+    };
+
+    await send(certificate);
+    setCurrentState(sender, 'certificate');
+}
+
+const filterData = async (sender) => {
+    const filter = {
+        messaging_product: 'whatsapp',
+        to: sender,
+        type: 'text',
+        text: {
+            body: 'Filter working in progress'
+        }
+    };
+
+    await send(filter);
+    setCurrentState(sender, 'inital');
+    console.log(getFilterData(sender));
+    chatFilterData[sender] = [];
+}
+
+const clarityRequest = async (sender) => {
+    const clarity = {
+        messaging_product: 'whatsapp',
+        to: sender,
+        type: 'interactive',
+        interactive: {
+            type: 'list',
+            header: {
+                type: 'text',
+                text: '💎 Clarity'
+            },
+            body: {
+                text: 'What kind of clarity you looking for in diamonds?'
+            },
+            action: {
+                button: 'Choose Clarity',
+                sections: [
+                    {
+                        title: 'Clarity',
+                        rows: [
+                            {
+                                id: 'if',
+                                title: 'IF'
+                            },
+                            {
+                                id: 'vvs1',
+                                title: 'VVS1'
+                            },
+                            {
+                                id: 'vvs2',
+                                title: 'VVS2'
+                            },
+                            {
+                                id: 'vs1',
+                                title: 'VS1'
+                            },
+                            {
+                                id: 'vs2',
+                                title: 'VS2'
+                            },
+                            {
+                                id: 'si1',
+                                title: 'SI1'
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    };
+    await send(clarity);
+    setCurrentState(sender, 'clarity');
+}
+
+const caratRequest = async (sender) => {
+    const carats = {
+        messaging_product: 'whatsapp',
+        to: sender,
+        type: 'interactive',
+        interactive: {
+            type: 'button',
+            header: {
+                type: 'text',
+                text: '💎 Select a Carat Range'
+            },
+            body: {
+                text: 'Please select one of the following carat ranges:'
+            },
+            action: {
+                buttons: [
+                    {
+                        type: 'reply',
+                        reply: {
+                            id: '0_1',
+                            title: '0 - 1'
+                        }
+                    },
+                    {
+                        type: 'reply',
+                        reply: {
+                            id: '1_1.09',
+                            title: '1 - 1.09'
+                        }
+                    }
+                ]
+            }
+        }
+    };
+
+    await send(carats);
+    setCurrentState(sender, 'carats');
+}
+
+const colorRequest = async (sender) => {
+    const colors = {
+        messaging_product: 'whatsapp',
+        to: sender,
+        type: 'interactive',
+        interactive: {
+            type: 'list',
+            header: {
+                type: 'text',
+                text: '💎 Colors'
+            },
+            body: {
+                text: 'What kind of color you looking for in diamonds?'
+            },
+            action: {
+                button: 'Choose Color',
+                sections: [
+                    {
+                        title: 'Color',
+                        rows: [
+                            {
+                                id: 'd',
+                                title: 'D'
+                            },
+                            {
+                                id: 'e',
+                                title: 'E'
+                            },
+                            {
+                                id: 'f',
+                                title: 'F'
+                            },
+                            {
+                                id: 'g',
+                                title: 'G'
+                            },
+                            {
+                                id: 'h',
+                                title: 'H'
+                            },
+                            {
+                                id: 'i',
+                                title: 'I'
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    };
+    await send(colors);
+    setCurrentState(sender, 'colors');
+}
+
+const shapeRequest = async (sender) => {
+    const shapes = {
+        messaging_product: 'whatsapp',
+        to: sender,
+        type: 'interactive',
+        interactive: {
+            type: 'list',
+            header: {
+                type: 'text',
+                text: '💎 Shapes'
+            },
+            body: {
+                text: 'What kind of shape you looking for in diamonds?'
+            },
+            action: {
+                button: 'Choose Shape',
+                sections: [
+                    {
+                        title: 'Shape',
+                        rows: [
+                            {
+                                id: 'round',
+                                title: 'Round'
+                            },
+                            {
+                                id: 'princess',
+                                title: 'Princess'
+                            },
+                            {
+                                id: 'cushion',
+                                title: 'Cushion'
+                            },
+                            {
+                                id: 'oval',
+                                title: 'Oval'
+                            },
+                            {
+                                id: 'emerald',
+                                title: 'Emerald'
+                            },
+                            {
+                                id: 'pear',
+                                title: 'Pear'
+                            },
+                            {
+                                id: 'radiant',
+                                title: 'Radiant'
+                            },
+                            {
+                                id: 'asscher',
+                                title: 'Asscher'
+                            },
+                            {
+                                id: 'marquise',
+                                title: 'Marquise'
+                            },
+                            {
+                                id: 'heart',
+                                title: 'Heart'
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    };
+    await send(shapes);
+    setCurrentState(sender, 'shapes');
+}
+
+const consultMessage = async (sender) => {
+    const consultantAlert = 'Solitaire Lab Diamond Searching Bot Alert:\n' +
+    '\n'+
+    `The number ${sender} requires your consultation regarding a diamond inquiry.`;
+
+    const consult = {
+        messaging_product: 'whatsapp',
+        to: expertsNumber,
+        type: 'text',
+        text: {
+            body: consultantAlert
+        }
+    };
+    await sendConsult(consult);
+
+    const senderMsg = "Our Solitaire Lab Diamond expert will contact you shortly to assist with your diamond search queries. Thank you for your interest!";
+    const senderData = {
+        messaging_product: 'whatsapp',
+        to: sender,
+        type: 'text',
+        text: {
+            body: senderMsg
+        }
+    };
+    await send(senderData);
+    setCurrentState(sender, 'inital');
+}
+
+const errorMsg = async (sender) => {
+    const error = {
+        messaging_product: 'whatsapp',
+        to: sender,
+        type: 'text',
+        text: {
+            body: "Apologies Boss! Could you please provide the correct information to help me improve my services? Your input is highly appreciated."
+        }
+    };
+    await send(error);
 }
 
 const welcomeMsg = async (sender) => {
@@ -116,41 +497,36 @@ const welcomeMsg = async (sender) => {
         to: sender,
         type: 'interactive',
         interactive: {
-            type: 'list',
+            type: 'button',
             header: {
                 type: 'text',
-                text: '⚙ Services'
+                text: '🛠️ Services'
             },
             body: {
                 text: 'What kind of service you looking for?'
             },
             action: {
-                button: 'Services',
-                sections: [
+                buttons: [
                     {
-                        title: 'Services',
-                        rows: [
-                            {
-                                id: 'labgrown',
-                                title: 'Lab Grown Diamond',
-                                description: 'Service for lab grown diamond.'
-                            },
-                            {
-                                id: 'avd',
-                                title: 'AVD Diamond',
-                                description: 'Service for avd diamond.'
-                            },
-                            {
-                                id: 'hpht',
-                                title: 'HPHT Diamond',
-                                description: 'Service for hpht diamond.'
-                            },
-                            {
-                                id: 'customer-service',
-                                title: 'Consult Our Experts',
-                                description: 'Consult our experts for more information.'
-                            }
-                        ]
+                        type: 'reply',
+                        reply: {
+                            id: 'cvd',
+                            title: 'CVD Diamond'
+                        }
+                    },
+                    {
+                        type: 'reply',
+                        reply: {
+                            id: 'hpht',
+                            title: 'HPHT Diamond'
+                        }
+                    },
+                    {
+                        type: 'reply',
+                        reply: {
+                            id: 'customer-service',
+                            title: 'Consult Our Experts'
+                        }
                     }
                 ]
             }
@@ -158,11 +534,17 @@ const welcomeMsg = async (sender) => {
     };
     await send(introduction);
     await send(welcomeService);
-    setCurrentState(sender, 'welcome');
+    setCurrentState(sender, 'services');
 }
 
 const send = async (data) => {
     await axios.post(url, data, {
         headers: { 'Authorization': `Bearer ${token}` }
+    });
+}
+
+const sendConsult = async (data) => {
+    await axios.post(url, data, {
+        headers: { 'Authorization': `Bearer ${consultToken}` }
     });
 }
