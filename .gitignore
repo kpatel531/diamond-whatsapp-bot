@@ -3,6 +3,7 @@
 logs.txt
 # Node.js dependencies
 node_modules/
+data/
 
 # Logs
 logs
