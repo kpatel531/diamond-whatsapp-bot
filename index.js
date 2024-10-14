@@ -17,6 +17,7 @@ const optionlimit = 10
 
 const currentState = [];
 const chatFilterData = [];
+const currentOptionPosition = [];
 let allDiamondList = [];
 let servicelist = [];
 let shapelist = [];
@@ -33,20 +34,48 @@ const getCurrentState = (chatId) => {
     return currentState[chatId] || false;
 }
 
-const setFilterData = (chatId, data) => {
-    if (!chatFilterData[chatId]) {
-        chatFilterData[chatId] = [];
-    }
-    chatFilterData[chatId].push(data);
-}
-
 const getFilterData = (chatId) => {
     return chatFilterData[chatId] || [];
 }
 
+const setFilterData = (chatId, state, data) => {
+    if (!chatFilterData[chatId]) {
+        chatFilterData[chatId] = [];
+    }
+    if (!chatFilterData[chatId][state]) {
+        chatFilterData[chatId][state] = [];
+    }
+    if (chatFilterData[chatId][state] && chatFilterData[chatId][state] != data) {
+        let existData = chatFilterData[chatId][state];
+        let prepareData = existData.concat([data]);
+        chatFilterData[chatId][state] = prepareData;
+    }
+}
+
+const getOptionLevel = (chatId, state) => {
+    return currentOptionPosition[chatId][state] || [];
+}
+
+const setOptionLevel= (chatId, state, position) => {
+    if (!currentOptionPosition[chatId]) {
+        currentOptionPosition[chatId] = [];
+    }
+    currentOptionPosition[chatId][state] = position;
+}
+
 const server = app.listen(PORT, async () => {
     console.log(`Sltrld chat bot running on:. http://localhost:${PORT}`);
+    let currentdate = new Date();
+    let datetime = "Initial Sync: " + currentdate.getHours() + ":"  
+                + currentdate.getMinutes() + ":" 
+                + currentdate.getSeconds();
+    console.log(datetime);
     await retriveStockList();
+    currentdate = new Date();
+    datetime = "Last Sync: " + currentdate.getHours() + ":"  
+                + currentdate.getMinutes() + ":" 
+                + currentdate.getSeconds();
+    console.log(datetime);
 });
 
 // Graceful shutdown on SIGINT (Ctrl + C)
@@ -99,16 +128,26 @@ const retriveStockList = async () => {
                     title: list
                 })
             });
+            if (shapelist.length > optionlimit) {
+                shapelist = splitList(shapelist);
+            } else {
+                shapelist = [shapelist];
+            }
 
             let sortedDiamonds = allDiamondList.sort((a, b) => a.Weight - b.Weight);
             let weights = [...new Set(sortedDiamonds.map(list => mapWeightToRange(list['Weight'])))];
             weights.filter(item => item && item !== '');
             weights.forEach(list => {
                 weightlist.push({
-                    id: list.replace(/\s/g, '_').toLowerCase(),
+                    id: list.replace(/\s/g, '').toLowerCase(),
                     title: list
                 })
             });
+            if (weightlist.length > optionlimit) {
+                weightlist = splitList(weightlist);
+            } else {
+                weightlist = [weightlist];
+            }
 
             let colors = [...new Set(allDiamondList.map(list => list['Color']))];
             colors.filter(item => item && item !== '');
@@ -118,6 +157,11 @@ const retriveStockList = async () => {
                     title: list
                 })
             });
+            if (colorlist.length > optionlimit) {
+                colorlist = splitList(colorlist);
+            } else {
+                colorlist = [colorlist];
+            }
 
             let clarities = [...new Set(allDiamondList.map(list => list['Clarity']))];
             clarities.filter(item => item && item !== '');
@@ -127,6 +171,11 @@ const retriveStockList = async () => {
                     title: list
                 })
             });
+            if (claritylist.length > optionlimit) {
+                claritylist = splitList(claritylist);
+            } else {
+                claritylist = [claritylist];
+            }
 
             let labs = [...new Set(allDiamondList.map(list => list['Lab']))];
             labs.filter(item => item && item !== '');
@@ -139,12 +188,13 @@ const retriveStockList = async () => {
                     }
                 })
             });
-
-            console.log(`shapelist:-  ${shapelist.length}`);
-            if (shapelist.length > optionlimit) {
-                const splitLists = splitList(shapelist);
-                console.log(splitLists);
-            }
+            lablist.push({
+                type: 'reply',
+                reply: {
+                    id: 'both',
+                    title: "IGI & GIA"
+                }
+            })
         })
         .catch(error => {
             console.log('Error:', error);
@@ -158,7 +208,7 @@ const retriveStockList = async () => {
 const splitList = (arr, chunkSize = (optionlimit - 1)) => {
     return arr.reduce((acc, _, i) => {
         if (i % chunkSize === 0) {
-        acc.push(arr.slice(i, i + chunkSize));
+            acc.push(arr.slice(i, i + chunkSize));
         }
         return acc;
     }, []);
@@ -216,9 +266,10 @@ const sendMessage = async (sender, message) => {
             if (message.type == 'interactive') {
                 if(message.interactive.type == 'button_reply') {
                     if (message.interactive.button_reply.id == 'both') {
-                        setFilterData(sender, {"service": ['CVD','HPHT']});
+                        setFilterData(sender, 'service', 'CVD');
+                        setFilterData(sender, 'service', 'HPHT');
                     } else {
-                        setFilterData(sender, {"service": [message.interactive.button_reply.title]});
+                        setFilterData(sender, 'service', message.interactive.button_reply.title);
                     }
                     await shapeRequest(sender, 0);
                 } else {
@@ -233,26 +284,37 @@ const sendMessage = async (sender, message) => {
                 if(message.interactive.type == 'list_reply') {
                     let id = message.interactive.list_reply.id;
                     if (id === 'show_more') {
-                        await shapeRequest(sender, 1);
+                        let pos = getOptionLevel(sender, 'shapes');
+                        await shapeRequest(sender, pos);
                     } else {
-                        setFilterData(sender, {"shape": message.interactive.list_reply.title});
-                        await caratRequest(sender);
+                        setFilterData(sender, 'shape', message.interactive.list_reply.title);
+                        await isRepeatMore(sender, 'Shape', 'shapes');
                     }
-                } else {
-                    await errorMsg(sender);
                 }
-            } else {    
+
+                if(message.interactive.type == 'button_reply') {
+                    if (message.interactive.button_reply.id == "yes") {
+                        await shapeRequest(sender, 0);
+                    } else {
+                        await caratRequest(sender, 0);
+                    }
+                }
+            } else {
                 await errorMsg(sender);
             }
         break;
         case 'carats':
             if (message.type == 'interactive') {
                 if(message.interactive.type == 'list_reply') {
-                    let carats = message.interactive.list_reply.id.split(" - ");
-                    setFilterData(sender, {"carat": {"from": carats[0], "to": carats[1]}});
-                    await colorRequest(sender);
-                } else {
-                    await errorMsg(sender);
+                    let id = message.interactive.list_reply.id;
+                    if (id === 'show_more') {
+                        let pos = getOptionLevel(sender, 'carats');
+                        await caratRequest(sender, pos);
+                    } else {
+                        let carats = message.interactive.list_reply.id.split("-");
+                        setFilterData(sender, 'carat', {"from": carats[0], "to": carats[1]});
+                        await colorRequest(sender, 0);
+                    }
                 }
             } else {
                 await errorMsg(sender);
@@ -261,10 +323,22 @@ const sendMessage = async (sender, message) => {
         case 'colors':
             if (message.type == 'interactive') {
                 if(message.interactive.type == 'list_reply') {
-                    setFilterData(sender, {"color": message.interactive.list_reply.title});
-                    await clarityRequest(sender);
-                } else {
-                    await errorMsg(sender);
+                    let id = message.interactive.list_reply.id;
+                    if (id === 'show_more') {
+                        let pos = getOptionLevel(sender, 'colors');
+                        await colorRequest(sender, pos);
+                    } else {
+                        setFilterData(sender, 'color', message.interactive.list_reply.title);
+                        await isRepeatMore(sender, 'Colors', 'colors');
+                    }
+                }
+
+                if(message.interactive.type == 'button_reply') {
+                    if (message.interactive.button_reply.id == "yes") {
+                        await colorRequest(sender, 0);
+                    } else {
+                        await clarityRequest(sender, 0);
+                    }
                 }
             } else {
                 await errorMsg(sender);
@@ -273,10 +347,22 @@ const sendMessage = async (sender, message) => {
         case 'clarity':
             if (message.type == 'interactive') {
                 if(message.interactive.type == 'list_reply') {
-                    setFilterData(sender, {"clarity": message.interactive.list_reply.title});
-                    await certificateRequest(sender);
-                } else {
-                    await errorMsg(sender);
+                    let id = message.interactive.list_reply.id;
+                    if (id === 'show_more') {
+                        let pos = getOptionLevel(sender, 'clarity');
+                        await clarityRequest(sender, pos);
+                    } else {
+                        setFilterData(sender, 'clarity', message.interactive.list_reply.title);
+                        await isRepeatMore(sender, 'Clarity', 'clarity');
+                    }
+                }
+
+                if(message.interactive.type == 'button_reply') {
+                    if (message.interactive.button_reply.id == "yes") {
+                        await clarityRequest(sender, 0);
+                    } else {
+                        await certificateRequest(sender);
+                    }
                 }
             } else {
                 await errorMsg(sender);
@@ -285,7 +371,12 @@ const sendMessage = async (sender, message) => {
         case 'certificate':
             if (message.type == 'interactive') {
                 if(message.interactive.type == 'button_reply') {
-                    setFilterData(sender, {"certificate": message.interactive.button_reply.title});
+                    if (message.interactive.button_reply.id == 'both') {
+                        setFilterData(sender, 'certificate', 'IGI');
+                        setFilterData(sender, 'certificate', 'GIA');
+                    } else {
+                        setFilterData(sender, 'certificate', message.interactive.button_reply.title);
+                    }
                     await filterData(sender);
                 } else {
                     await errorMsg(sender);
@@ -301,7 +392,6 @@ const sendMessage = async (sender, message) => {
 }
 
 const certificateRequest = async (sender) => {
-    console.log(lablist);
     const certificate = {
         messaging_product: 'whatsapp',
         to: sender,
@@ -395,16 +485,17 @@ const sendStockFile = async (sender, data) => {
 }
 
 const filterData = async (sender) => {
-    let filterlist = getFilterData(sender);
-    console.log(allDiamondList);
+    let filterList = getFilterData(sender);
+    console.log(filterList);
+
     const filteredDiamonds = allDiamondList.filter(diamond => 
-        (diamond["Growth Type"] === filterlist[0].service) 
-        && (diamond["Shape"] === filterlist[1].shape) 
-        && (diamond["Weight"] >= filterlist[2].carat.from) 
-        && (diamond["Weight"] <= filterlist[2].carat.to) 
-        && (diamond["Color"] === filterlist[3].color) 
-        && (diamond["Clarity"] === filterlist[4].clarity) 
-        && (diamond["Lab"] === filterlist[5].certificate)
+        (filterList['service'].includes(diamond["Growth Type"])) 
+        && (filterList['shape'].includes(diamond["Shape"])) 
+        && (diamond["Weight"] >= filterList['carat'][0].from) 
+        && (diamond["Weight"] <= filterList['carat'][0].to) 
+        && (filterList['color'].includes(diamond["Color"])) 
+        && (filterList['clarity'].includes(diamond["Clarity"])) 
+        && (filterList['certificate'].includes(diamond["Lab"]))
     );
     
     if(filteredDiamonds.length) {
@@ -438,7 +529,25 @@ const filterData = async (sender) => {
     chatFilterData[sender] = [];
 }
 
-const clarityRequest = async (sender) => {
+const clarityRequest = async (sender, index) => {
+    let clarityOption;
+    if (claritylist.length > 1) {
+        clarityOption = claritylist[index];
+        let newObject = {
+            id: 'show_more',
+            title: 'Load More Options'
+        };
+        let lastIndex = claritylist.length - 1;
+        if (index != lastIndex) {
+            if (!clarityOption.some(item => item.id === newObject.id)) {
+                clarityOption.push(newObject);
+            }
+        }
+        setOptionLevel(sender, 'clarity', (index + 1));
+    } else {
+        clarityOption = claritylist[0];
+    }
+    
     const clarity = {
         messaging_product: 'whatsapp',
         to: sender,
@@ -457,7 +566,7 @@ const clarityRequest = async (sender) => {
                 sections: [
                     {
                         title: 'Clarity',
-                        rows: claritylist
+                        rows: clarityOption
                     }
                 ]
             }
@@ -467,7 +576,25 @@ const clarityRequest = async (sender) => {
     setCurrentState(sender, 'clarity');
 }
 
-const caratRequest = async (sender) => {
+const caratRequest = async (sender, index) => {
+    let caratOption;
+    if (weightlist.length > 1) {
+        caratOption = weightlist[index];
+        let newObject = {
+            id: 'show_more',
+            title: 'Load More Options'
+        };
+        let lastIndex = weightlist.length - 1;
+        if (index != lastIndex) {
+            if (!caratOption.some(item => item.id === newObject.id)) {
+                caratOption.push(newObject);
+            }
+        }
+        setOptionLevel(sender, 'carats', (index + 1));
+    } else {
+        caratOption = weightlist[0];
+    }
+    
     const carats = {
         messaging_product: 'whatsapp',
         to: sender,
@@ -486,7 +613,7 @@ const caratRequest = async (sender) => {
                 sections: [
                     {
                         title: 'Carat',
-                        rows: weightlist
+                        rows: caratOption
                     }
                 ]
             }
@@ -497,7 +624,25 @@ const caratRequest = async (sender) => {
     setCurrentState(sender, 'carats');
 }
 
-const colorRequest = async (sender) => {
+const colorRequest = async (sender, index) => {
+    let colorOption;
+    if (colorlist.length > 1) {
+        colorOption = colorlist[index];
+        let newObject = {
+            id: 'show_more',
+            title: 'Load More Options'
+        };
+        let lastIndex = colorlist.length - 1;
+        if (index != lastIndex) {
+            if (!colorOption.some(item => item.id === newObject.id)) {
+                colorOption.push(newObject);
+            }
+        }
+        setOptionLevel(sender, 'colors', (index + 1));
+    } else {
+        colorOption = colorlist[0];
+    }
+    
     const colors = {
         messaging_product: 'whatsapp',
         to: sender,
@@ -516,7 +661,7 @@ const colorRequest = async (sender) => {
                 sections: [
                     {
                         title: 'Color',
-                        rows: colorlist
+                        rows: colorOption
                     }
                 ]
             }
@@ -527,14 +672,25 @@ const colorRequest = async (sender) => {
 }
 
 const shapeRequest = async (sender, index) => {
-    let shapeOption = shapelist[index];
-    if (index != 1) {
-        shapeOption.push({
+    let shapeOption;
+    if (shapelist.length > 1) {
+        shapeOption = shapelist[index];
+        let newObject = {
             id: 'show_more',
-            title: 'Show More Options'
-        });
+            title: 'Load More Options'
+        };
+        let lastIndex = shapelist.length - 1;
+        if (index != lastIndex) {
+            if (!shapeOption.some(item => item.id === newObject.id)) {
+                shapeOption.push(newObject);
+            }
+        }
+        setOptionLevel(sender, 'shapes', (index + 1));
+    } else {
+        shapeOption = shapelist[0];
     }
-    const shapes = {
+    
+    let shapes = {
         messaging_product: 'whatsapp',
         to: sender,
         type: 'interactive',
@@ -591,7 +747,7 @@ const consultMessage = async (sender) => {
 }
 
 const isRepeatMore = async (sender, label, state) => {
-    const error = {
+    const isReapeat = {
         messaging_product: 'whatsapp',
         to: sender,
         type: 'interactive',
@@ -602,29 +758,29 @@ const isRepeatMore = async (sender, label, state) => {
                 text: `👋 Choose More ${label}`
             },
             body: {
-                text: null
+                text: "Do you want to choose more or move for next step?"
             },
             action: {
                 buttons: [
                     {
                         type: 'reply',
                         reply: {
-                            id: 1,
-                            title: '✅ Yes,Processed'
+                            id: "yes",
+                            title: '✅ Yes'
                         }
                     },
                     {
                         type: 'reply',
                         reply: {
-                            id: 0,
-                            title: '🛑 No, Continue With Next Step'
+                            id: "no",
+                            title: '🛑 No'
                         }
                     }
                 ]
             }
         }
     };
-    await utils.send(error, constants.token);
+    await utils.send(isReapeat, constants.token);
     setCurrentState(sender, state);
 }
 
