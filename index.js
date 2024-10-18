@@ -501,7 +501,7 @@ const filterData = async (sender) => {
     if(filteredDiamonds.length) {
         await sendStockFile(sender, filteredDiamonds);
 
-        const thankyouMsg = 'Thank you so much for your interest! We truly appreciate your enthusiasm. Please stay tuned as we will be showcasing more exciting and exclusive items soon. We look forward to sharing more stunning diamonds and unique collections with you!Thank you so much for your interest! We truly appreciate your enthusiasm. Please stay tuned as we will be showcasing more exciting and exclusive items soon. We look forward to sharing more stunning diamonds and unique collections with you!😊🙏'
+        const thankyouMsg = 'Thank you so much for your interest! We truly appreciate your enthusiasm. We look forward to sharing more stunning diamonds and unique collections with you!😊🙏'
 
         const thankyou = {
             messaging_product: 'whatsapp',

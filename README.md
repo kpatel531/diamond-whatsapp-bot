@@ -1,6 +1,6 @@
-# Solitaire Lab Diamond WhatsApp Chatbot
+# Diamond WhatsApp Chatbot
 
-This repository contains the code and documentation for the Solitaire Lab Diamond WhatsApp Chatbot. The chatbot is designed to handle diamond inquiries efficiently using WhatsApp, leveraging the Graph API and Node.js.
+This repository contains the code and documentation for the Diamond WhatsApp Chatbot. The chatbot is designed to handle diamond inquiries efficiently using WhatsApp, leveraging the Graph API and Node.js.
 
 ## Table of Contents
 
@@ -15,14 +15,14 @@ This repository contains the code and documentation for the Solitaire Lab Diamon
 
 ## Overview
 
-The Solitaire Lab Diamond WhatsApp Chatbot is a Node.js application that interacts with users over WhatsApp to assist them with diamond inquiries. The chatbot can handle customer queries about diamond specifications, pricing, availability, and more.
+The Diamond WhatsApp Chatbot is a Node.js application that interacts with users over WhatsApp to assist them with diamond inquiries. The chatbot can handle customer queries about diamond specifications, pricing, availability, and more.
 
 ## Features
 
 - **Automated Responses:** Quickly respond to common diamond-related inquiries.
 - **Search Diamonds:** Customers can search for diamonds by specifications.
 - **Pricing and Availability:** Provide real-time information on diamond pricing and availability.
-- **Seamless Integration:** Integrates with Solitaire Lab's backend to fetch and display diamond information.
+- **Seamless Integration:** Integrates with backend to fetch and display diamond information.
 - **User-Friendly Interface:** Simple and intuitive chat interface for customers.
 
 ## Getting Started
@@ -41,8 +41,8 @@ Before you start, ensure you have the following installed:
 1. **Clone the Repository:**
 
    ```bash
-   git clone https://github.com/yourusername/solitaire-lab-diamond-chatbot.git
-   cd solitaire-lab-diamond-chatbot
+   git clone https://github.com/yourusername/diamond-whatsapp-bot.git <DIR>
+   cd <DIR>
 2. **Install Dependencies:**
     ```bash
    npm install
@@ -52,7 +52,7 @@ Before you start, ensure you have the following installed:
     PORT=3000
     WHATSAPP_PHONE_NUMBER_ID=your-whatsapp-phone-number-id
     WHATSAPP_ACCESS_TOKEN=your-whatsapp-access-token
-    BACKEND_API_URL=https://api.solitairelabdiamond.com
+    BACKEND_API_URL=DIAMOND_API_URL
 2. **Set Up Webhooks:** Configure the webhook URL in your Meta developer portal to point to your server (e.g., https://yourdomain.com/webhook).
 
 ### Usage
