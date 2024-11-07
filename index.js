@@ -8,8 +8,15 @@ const fs = require('fs');
 const {constants} = require('./constant');
 const templates = require('./templates');
 const utils = require('./utils');
+const { google } = require('googleapis');
+const { surveyStock } = require('./surveyStock');
 const app = express();
-app.use(bodyParser.json())
+app.use(bodyParser.json());
+
+app.get('/oauth2callback', async (req, res) => {
+    console.log('oauth2callback request happen.....!');
+    console.log(req);
+});
 
 const PORT = +process.env.PORT || 3000;
 const apiUrl = process.env.API_URL;
@@ -78,11 +85,21 @@ const server = app.listen(PORT, async () => {
     console.log(datetime);
 });
 
+const surveyStocks = async () => {
+    try {
+        let autherized = surveyStock();
+        console.log(autherized);
+        console.log("I am in console log for survey stock scope...!");
+    } catch (error) {
+        console.error('Error retrieving form details:', error);
+    }
+}
+
 // Graceful shutdown on SIGINT (Ctrl + C)
 process.on('SIGINT', () => {
     console.log('SIGINT signal received. Closing server.');
     server.close(() => {
-      console.log('Server closed. Exiting process.');
+      console.error('Server closed. Exiting process.');
       process.exit(0);
     });
 });
@@ -91,7 +108,7 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => {
     console.log('SIGTERM signal received. Closing server.');
     server.close(() => {
-        console.log('Server closed. Exiting process.');
+        console.error('Server closed. Exiting process.');
         process.exit(0);
     });
 });
@@ -219,7 +236,7 @@ const mapWeightToRange = (weight) => {
     const lowerBound = Math.floor(weight / step) * step;
     const upperBound = lowerBound + step;
     return `${lowerBound.toFixed(1)} - ${upperBound.toFixed(1)}`;
-};
+}
 
 app.get('/webhook', (req, res) => {
     const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
@@ -766,14 +783,14 @@ const isRepeatMore = async (sender, label, state) => {
                         type: 'reply',
                         reply: {
                             id: "yes",
-                            title: '✅ Yes'
+                            title: '✅ Continue'
                         }
                     },
                     {
                         type: 'reply',
                         reply: {
                             id: "no",
-                            title: '🛑 No'
+                            title: '🛑 Next'
                         }
                     }
                 ]
